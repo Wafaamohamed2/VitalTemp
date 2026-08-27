@@ -8,6 +8,7 @@ public class AnalysisResult
     public string HealthIndicator { get; set; } = string.Empty;
     public double Correlation { get; set; }
     public double PValue { get; set; }
+    public double? CompositeRiskScore { get; set; } // Precomputed composite risk score (e.g. from Hamza's model)
     public string Notes { get; set; } = string.Empty;
 
     // Navigation Property

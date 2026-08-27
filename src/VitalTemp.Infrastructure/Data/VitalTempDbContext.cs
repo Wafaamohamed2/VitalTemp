@@ -46,6 +46,7 @@ public class VitalTempDbContext : DbContext
             entity.Property(e => e.Time).HasColumnName("time");
             entity.Property(e => e.TempF).HasColumnName("temp_f");
             entity.Property(e => e.TempC).HasColumnName("temp_c");
+            entity.Property(e => e.TempNormalized).HasColumnName("temp_normalized");
             entity.Property(e => e.Granularity).HasColumnName("granularity");
 
             entity.HasOne(e => e.Location)
@@ -65,6 +66,7 @@ public class VitalTempDbContext : DbContext
             entity.Property(e => e.Source).HasColumnName("source");
             entity.Property(e => e.Indicator).HasColumnName("indicator");
             entity.Property(e => e.Value).HasColumnName("value");
+            entity.Property(e => e.NormalizedValue).HasColumnName("normalized_value");
             entity.Property(e => e.Year).HasColumnName("year");
 
             entity.HasOne(e => e.Location)
@@ -85,6 +87,7 @@ public class VitalTempDbContext : DbContext
             entity.Property(e => e.HealthIndicator).HasColumnName("health_indicator");
             entity.Property(e => e.Correlation).HasColumnName("correlation");
             entity.Property(e => e.PValue).HasColumnName("p_value");
+            entity.Property(e => e.CompositeRiskScore).HasColumnName("composite_risk_score");
             entity.Property(e => e.Notes).HasColumnName("notes");
 
             entity.HasOne(e => e.Location)

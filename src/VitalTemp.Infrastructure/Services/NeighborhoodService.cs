@@ -30,29 +30,55 @@ public class NeighborhoodService : INeighborhoodService
 
         bool isComposite = indicator.Equals("ALL", StringComparison.OrdinalIgnoreCase);
 
-        // Step 1: Extract and mathematically normalize health metrics per tract
+        // Step 1: Extract and mathematically compute risk factors per tract
         var tractItems = locations.Select(loc =>
         {
-            double avgTemp = loc.TemperatureReadings.Any()
-                ? loc.TemperatureReadings.Average(r => r.TempF)
-                : 104.0;
+            var tempReading = loc.TemperatureReadings.FirstOrDefault();
+            double avgTemp = tempReading != null ? tempReading.TempF : (loc.TemperatureReadings.Any() ? loc.TemperatureReadings.Average(r => r.TempF) : 104.0);
+            double tempNorm = tempReading?.TempNormalized ?? Math.Clamp((avgTemp - 98.0) / (116.0 - 98.0), 0.0, 1.0);
 
-            double healthFactor = CalculateNormalizedHealthFactor(loc.HealthDataRecords, indicator);
-            
-            // Raw health value for display
+            double healthFactor;
             double displayHealthValue;
             string displayIndicatorName;
+            double riskScore;
 
             if (isComposite)
             {
                 displayIndicatorName = "Composite Index";
-                displayHealthValue = Math.Round(healthFactor * 100, 1); // e.g. 84.5% Composite Vulnerability
+
+                // Average of normalized values across all indicators that have NormalizedValue
+                var normRecords = loc.HealthDataRecords.Where(h => h.NormalizedValue.HasValue).ToList();
+                healthFactor = normRecords.Any() ? normRecords.Average(h => h.NormalizedValue!.Value) : CalculateNormalizedHealthFactor(loc.HealthDataRecords, "ALL");
+                displayHealthValue = Math.Round(healthFactor * 100.0, 1); // e.g. 74.5%
+
+                // Use Hamza's precomputed composite risk score if available
+                var analysis = loc.AnalysisResults.FirstOrDefault();
+                if (analysis?.CompositeRiskScore.HasValue == true)
+                {
+                    riskScore = Math.Round(analysis.CompositeRiskScore.Value, 2);
+                }
+                else
+                {
+                    riskScore = Math.Round((tempNorm * 0.60) + (healthFactor * 0.40), 2);
+                }
             }
             else
             {
-                var match = loc.HealthDataRecords.FirstOrDefault(h => h.Indicator.Equals(indicator, StringComparison.OrdinalIgnoreCase));
                 displayIndicatorName = indicator.ToUpperInvariant();
-                displayHealthValue = match != null ? Math.Round(match.Value, 1) : Math.Round(healthFactor * 100, 1);
+                var match = loc.HealthDataRecords.FirstOrDefault(h => h.Indicator.Equals(indicator, StringComparison.OrdinalIgnoreCase));
+
+                if (match?.NormalizedValue.HasValue == true)
+                {
+                    healthFactor = match.NormalizedValue.Value;
+                    riskScore = Math.Round((tempNorm * 0.60) + (healthFactor * 0.40), 2);
+                    displayHealthValue = Math.Round(match.Value, 1);
+                }
+                else
+                {
+                    healthFactor = CalculateNormalizedHealthFactor(loc.HealthDataRecords, indicator);
+                    riskScore = Math.Round((tempNorm * 0.60) + (healthFactor * 0.40), 2);
+                    displayHealthValue = match != null ? Math.Round(match.Value, 1) : Math.Round(healthFactor * 100.0, 1);
+                }
             }
 
             return new
@@ -61,7 +87,8 @@ public class NeighborhoodService : INeighborhoodService
                 AvgTemp = avgTemp,
                 HealthFactor = healthFactor,
                 DisplayHealthValue = displayHealthValue,
-                DisplayIndicatorName = displayIndicatorName
+                DisplayIndicatorName = displayIndicatorName,
+                RiskScore = riskScore
             };
         }).ToList();
 
@@ -76,6 +103,7 @@ public class NeighborhoodService : INeighborhoodService
             var loc = item.Location;
             double avgTemp = item.AvgTemp;
             double healthFactor = item.HealthFactor;
+            double riskScore = item.RiskScore;
 
             double thermalAnomaly = Math.Round(avgTemp - meanCityTemp, 1);
             double healthAnomaly = Math.Round((healthFactor - meanCityHealthFactor) * 100.0, 1);
@@ -87,10 +115,6 @@ public class NeighborhoodService : INeighborhoodService
                 (true, false) => "High Heat / Moderate Health Burden",
                 (false, true) => "Moderate Heat / Elevated Health Burden"
             };
-
-            // Normalized composite risk formula: 60% Thermal Load + 40% Health Vulnerability
-            double tempFactor = Math.Clamp((avgTemp - 98.0) / (116.0 - 98.0), 0.0, 1.0);
-            double riskScore = Math.Round((tempFactor * 0.60) + (healthFactor * 0.40), 2);
 
             string riskLevel = riskScore switch
             {
