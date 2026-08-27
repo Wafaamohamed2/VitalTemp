@@ -3,11 +3,11 @@ namespace VitalTemp.Application.DTOs;
 public class FortyGuardHeatmapRequest
 {
     public string City { get; set; } = "Phoenix";
-    public double MinLat { get; set; } = 33.30;
-    public double MaxLat { get; set; } = 33.75;
-    public double MinLng { get; set; } = -112.30;
-    public double MaxLng { get; set; } = -111.90;
-    public string Date { get; set; } = "2026-08-01";
+    public double MinLat { get; set; } = 33.4000;
+    public double MaxLat { get; set; } = 33.5000;
+    public double MinLng { get; set; } = -112.1300;
+    public double MaxLng { get; set; } = -112.0300;
+    public string Date { get; set; } = "2023-08-18";
 }
 
 public class FortyGuardSubmitResponse

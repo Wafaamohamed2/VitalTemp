@@ -27,7 +27,7 @@ public class AnalyticsController : ControllerBase
     /// </summary>
     [HttpGet("heatmap")]
     [ProducesResponseType(typeof(FortyGuardHeatmapResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetHeatmap([FromQuery] string date = "2026-08-01", CancellationToken ct = default)
+    public async Task<IActionResult> GetHeatmap([FromQuery] string date = "2023-08-18", CancellationToken ct = default)
     {
         var request = new FortyGuardHeatmapRequest { City = "Phoenix", Date = date };
         var heatmap = await _fortyGuardClient.GetPhoenixHeatmapAsync(request, ct);

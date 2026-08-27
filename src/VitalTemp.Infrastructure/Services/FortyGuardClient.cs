@@ -37,7 +37,7 @@ public class FortyGuardClient : IFortyGuardClient
     {
         string cacheKey = $"fg_heatmap_{request.City}_{request.Date}_{request.MinLat}_{request.MaxLat}";
 
-        // 1. Check Memory Cache to preserve API credits
+        // 1. Check Memory Cache to preserve credits
         if (_cache.TryGetValue(cacheKey, out FortyGuardHeatmapResponse? cachedResponse) && cachedResponse != null)
         {
             _logger.LogInformation("Memory Cache Hit for FortyGuard Heatmap in {City} ({Date}). Returning cached dataset without consuming API credits.", request.City, request.Date);
@@ -57,7 +57,6 @@ public class FortyGuardClient : IFortyGuardClient
 
         FortyGuardHeatmapResponse response;
 
-        // If no API key is provided, or placeholder, log and use calibrated fallback
         if (string.IsNullOrWhiteSpace(apiKey) || apiKey.StartsWith("mock", StringComparison.OrdinalIgnoreCase))
         {
             _logger.LogWarning("No real FortyGuard API key configured in appsettings/environment. Utilizing calibrated Phoenix thermal matrix fallback.");
@@ -68,7 +67,6 @@ public class FortyGuardClient : IFortyGuardClient
         {
             try
             {
-                // Set official FortyGuard authentication header 'api-key'
                 _httpClient.DefaultRequestHeaders.Clear();
                 _httpClient.DefaultRequestHeaders.Add("api-key", apiKey);
 
@@ -107,13 +105,12 @@ public class FortyGuardClient : IFortyGuardClient
                     date_time = new
                     {
                         start_date = request.Date,
-                        start_time = "14:00:00",
+                        start_time = "14:00",
                         filter_type = 1
                     },
                     granularity = 100
                 };
 
-                // Exact official Submit URL: https://api.fortyguard.com/v1/heatmap
                 string submitUrl = baseUrl.EndsWith("/v1", StringComparison.OrdinalIgnoreCase) 
                     ? $"{baseUrl}/heatmap" 
                     : $"{baseUrl}/v1/heatmap";
@@ -123,19 +120,14 @@ public class FortyGuardClient : IFortyGuardClient
 
                 if (!submitHttpRes.IsSuccessStatusCode)
                 {
-                    string errorBody = await submitHttpRes.Content.ReadAsStringAsync(cancellationToken);
-                    _logger.LogWarning("FortyGuard POST /v1/heatmap returned status {StatusCode}. Body: {Body}", submitHttpRes.StatusCode, errorBody);
+                    string errBody = await submitHttpRes.Content.ReadAsStringAsync(cancellationToken);
+                    _logger.LogWarning("FortyGuard POST /v1/heatmap returned status {StatusCode}. Body: {Body}", submitHttpRes.StatusCode, errBody);
                     response = GenerateRealisticPhoenixHeatmap(request);
                     response.IsLiveApiCall = false;
                 }
                 else
                 {
                     var rootJson = await submitHttpRes.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: cancellationToken);
-                    
-                    // Diagnostic Raw JSON print
-                    _logger.LogInformation(">>> [FortyGuard RAW Submit Response]: {RawJson}", rootJson.GetRawText());
-
-                    // Unpack FortyGuard "data" wrapper: response.json()["data"]["activity_id"]
                     JsonElement targetData = rootJson.TryGetProperty("data", out var dataElem) ? dataElem : rootJson;
 
                     string activityId = string.Empty;
@@ -156,10 +148,8 @@ public class FortyGuardClient : IFortyGuardClient
                     }
                     else
                     {
-                        // Step 2: Poll GET /v1/status/{activity_id}
                         _logger.LogInformation("Heatmap submitted successfully with ActivityId: {ActivityId}. Polling status...", activityId);
                         response = await PollForHeatmapCompletionAsync(baseUrl, activityId, request, cancellationToken);
-                        response.IsLiveApiCall = true;
                     }
                 }
             }
@@ -172,10 +162,7 @@ public class FortyGuardClient : IFortyGuardClient
         }
 
         response.FromCache = false;
-
-        // Cache completed result for 60 minutes
         _cache.Set(cacheKey, response, TimeSpan.FromMinutes(60));
-
         return response;
     }
 
@@ -185,16 +172,15 @@ public class FortyGuardClient : IFortyGuardClient
         FortyGuardHeatmapRequest request,
         CancellationToken cancellationToken)
     {
-        const int maxAttempts = 15; // 15 * 2s = 30s timeout
-        const int delayMs = 2000;
+        const int maxAttempts = 40;
+        const int delayMs = 3500;
 
-        // Exact official Polling URL: https://api.fortyguard.com/v1/status/{activity_id}
         string statusUrl = baseUrl.EndsWith("/v1", StringComparison.OrdinalIgnoreCase)
             ? $"{baseUrl}/status/{activityId}"
             : $"{baseUrl}/v1/status/{activityId}";
 
         for (int attempt = 1; attempt <= maxAttempts; attempt++)
-            {
+        {
             await Task.Delay(delayMs, cancellationToken);
 
             var pollRes = await _httpClient.GetAsync(statusUrl, cancellationToken);
@@ -206,18 +192,13 @@ public class FortyGuardClient : IFortyGuardClient
             }
 
             var rootDoc = await pollRes.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: cancellationToken);
-            
-            // Diagnostic Raw JSON print
-            _logger.LogInformation(">>> [FortyGuard RAW Status Response (Attempt {Attempt})]: {RawJson}", attempt, rootDoc.GetRawText());
-
-            // Unpack FortyGuard "data" wrapper: status_response.json()["data"]["status"]
             JsonElement statusData = rootDoc.TryGetProperty("data", out var dElem) ? dElem : rootDoc;
             
             string status = statusData.TryGetProperty("status", out var sProp) ? sProp.GetString() ?? "PROCESSING" : "PROCESSING";
 
             if (status.Equals("COMPLETED", StringComparison.OrdinalIgnoreCase) || status.Equals("SUCCESS", StringComparison.OrdinalIgnoreCase))
             {
-                _logger.LogInformation("Activity {ActivityId} completed successfully. Extracting spatial heat matrix...", activityId);
+                _logger.LogInformation("Activity {ActivityId} completed successfully. Extracting GeoJSON spatial heat matrix...", activityId);
                 
                 var points = ExtractHeatPointsFromElement(statusData);
 
@@ -227,7 +208,9 @@ public class FortyGuardClient : IFortyGuardClient
                     points = ExtractHeatPointsFromElement(rootDoc);
                 }
 
-                if (!points.Any())
+                bool isRealData = points.Any();
+
+                if (!isRealData)
                 {
                     _logger.LogWarning("No heat points could be parsed from FortyGuard completion response. Using calibrated fallback overlay.");
                     var fallback = GenerateRealisticPhoenixHeatmap(request);
@@ -240,7 +223,7 @@ public class FortyGuardClient : IFortyGuardClient
                     Status = "COMPLETED",
                     HeatPoints = points,
                     Timestamp = DateTime.UtcNow,
-                    IsLiveApiCall = true
+                    IsLiveApiCall = isRealData
                 };
             }
 
@@ -250,6 +233,7 @@ public class FortyGuardClient : IFortyGuardClient
         _logger.LogWarning("Activity {ActivityId} polling timed out. Utilizing calibrated fallback data.", activityId);
         var timedOutFallback = GenerateRealisticPhoenixHeatmap(request);
         timedOutFallback.ActivityId = activityId;
+        timedOutFallback.IsLiveApiCall = false;
         return timedOutFallback;
     }
 
@@ -259,25 +243,138 @@ public class FortyGuardClient : IFortyGuardClient
 
         try
         {
-            // Case 1: "heat_points" or "points" array of objects
-            if ((element.TryGetProperty("heat_points", out var arrProp) || element.TryGetProperty("points", out arrProp)) && arrProp.ValueKind == JsonValueKind.Array)
+            // Traverse official FortyGuard GeoJSON path: result.map_data.features or data.result.map_data.features
+            JsonElement featuresElement = default;
+            bool foundFeatures = false;
+
+            if (element.TryGetProperty("result", out var resProp) &&
+                resProp.TryGetProperty("map_data", out var mapDataProp) &&
+                mapDataProp.TryGetProperty("features", out var fProp) &&
+                fProp.ValueKind == JsonValueKind.Array)
+            {
+                featuresElement = fProp;
+                foundFeatures = true;
+            }
+            else if (element.TryGetProperty("map_data", out mapDataProp) &&
+                     mapDataProp.TryGetProperty("features", out fProp) &&
+                     fProp.ValueKind == JsonValueKind.Array)
+            {
+                featuresElement = fProp;
+                foundFeatures = true;
+            }
+            else if (element.TryGetProperty("features", out fProp) && fProp.ValueKind == JsonValueKind.Array)
+            {
+                featuresElement = fProp;
+                foundFeatures = true;
+            }
+
+            if (foundFeatures)
+            {
+                foreach (var feature in featuresElement.EnumerateArray())
+                {
+                    if (!feature.TryGetProperty("geometry", out var geom)) continue;
+                    
+                    double lat = 0;
+                    double lng = 0;
+                    int vertexCount = 0;
+
+                    // Extract coordinates (supporting Polygon, MultiPolygon, Point)
+                    if (geom.TryGetProperty("coordinates", out var coords) && coords.ValueKind == JsonValueKind.Array)
+                    {
+                        string geomType = geom.TryGetProperty("type", out var typeP) ? typeP.GetString() ?? "Polygon" : "Polygon";
+
+                        if (geomType.Equals("Polygon", StringComparison.OrdinalIgnoreCase))
+                        {
+                            // Polygon: [[[lng1, lat1], [lng2, lat2], ...]]
+                            var ring = coords.EnumerateArray().FirstOrDefault();
+                            if (ring.ValueKind == JsonValueKind.Array)
+                            {
+                                double sumLat = 0, sumLng = 0;
+                                foreach (var vertex in ring.EnumerateArray())
+                                {
+                                    var vList = vertex.EnumerateArray().ToList();
+                                    if (vList.Count >= 2)
+                                    {
+                                        sumLng += vList[0].GetDouble();
+                                        sumLat += vList[1].GetDouble();
+                                        vertexCount++;
+                                    }
+                                }
+                                if (vertexCount > 0)
+                                {
+                                    lng = sumLng / vertexCount;
+                                    lat = sumLat / vertexCount;
+                                }
+                            }
+                        }
+                        else if (geomType.Equals("Point", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var ptList = coords.EnumerateArray().ToList();
+                            if (ptList.Count >= 2)
+                            {
+                                lng = ptList[0].GetDouble();
+                                lat = ptList[1].GetDouble();
+                                vertexCount = 1;
+                            }
+                        }
+                    }
+
+                    if (vertexCount == 0 || lat == 0 || lng == 0) continue;
+
+                    // Extract Temperature from properties & Convert Celsius to Fahrenheit
+                    double tempF = 0;
+                    double tempC = 0;
+
+                    if (feature.TryGetProperty("properties", out var props))
+                    {
+                        // 1. Check direct Celsius fields (FortyGuard standard: temperature, average_temperature, avg_temp)
+                        if (props.TryGetProperty("temperature", out var tP)) tempC = tP.GetDouble();
+                        else if (props.TryGetProperty("average_temperature", out tP)) tempC = tP.GetDouble();
+                        else if (props.TryGetProperty("avg_temp", out tP)) tempC = tP.GetDouble();
+                        else if (props.TryGetProperty("temp_c", out tP)) tempC = tP.GetDouble();
+                        else if (props.TryGetProperty("temperature_c", out tP)) tempC = tP.GetDouble();
+
+                        if (tempC > 0)
+                        {
+                            // Convert Celsius to Fahrenheit: F = C * 9/5 + 32
+                            tempF = Math.Round((tempC * 9.0 / 5.0) + 32.0, 1);
+                        }
+                        // 2. Check if already in Fahrenheit
+                        else if (props.TryGetProperty("temperature_f", out tP)) tempF = tP.GetDouble();
+                        else if (props.TryGetProperty("temp_f", out tP)) tempF = tP.GetDouble();
+                        else if (props.TryGetProperty("temp", out tP))
+                        {
+                            double raw = tP.GetDouble();
+                            tempF = raw < 70 ? Math.Round((raw * 9.0 / 5.0) + 32.0, 1) : raw;
+                        }
+                    }
+
+                    if (tempF > 60.0) // Valid Phoenix summer temperature threshold
+                    {
+                        points.Add(new HeatmapPointDto
+                        {
+                            Latitude = Math.Round(lat, 4),
+                            Longitude = Math.Round(lng, 4),
+                            TemperatureF = Math.Round(tempF, 1),
+                            TemperatureC = Math.Round((tempF - 32.0) * 5.0 / 9.0, 1)
+                        });
+                    }
+                }
+            }
+            // Direct array fallback if present
+            else if ((element.TryGetProperty("heat_points", out var arrProp) || element.TryGetProperty("points", out arrProp)) && arrProp.ValueKind == JsonValueKind.Array)
             {
                 foreach (var item in arrProp.EnumerateArray())
                 {
-                    double lat = 0, lng = 0, tempF = 0;
+                    double lat = item.TryGetProperty("latitude", out var lP) ? lP.GetDouble() : item.TryGetProperty("lat", out lP) ? lP.GetDouble() : 0;
+                    double lng = item.TryGetProperty("longitude", out var lgP) ? lgP.GetDouble() : item.TryGetProperty("lng", out lgP) ? lgP.GetDouble() : item.TryGetProperty("lon", out lgP) ? lgP.GetDouble() : 0;
+                    double tempF = item.TryGetProperty("temperature_f", out var tP) ? tP.GetDouble() : item.TryGetProperty("temp_f", out tP) ? tP.GetDouble() : 0;
 
-                    if (item.TryGetProperty("latitude", out var latP)) lat = latP.GetDouble();
-                    else if (item.TryGetProperty("lat", out latP)) lat = latP.GetDouble();
-
-                    if (item.TryGetProperty("longitude", out var lngP)) lng = lngP.GetDouble();
-                    else if (item.TryGetProperty("lng", out lngP)) lng = lngP.GetDouble();
-                    else if (item.TryGetProperty("lon", out lngP)) lng = lngP.GetDouble();
-
-                    if (item.TryGetProperty("temperature_f", out var tP)) tempF = tP.GetDouble();
-                    else if (item.TryGetProperty("temp_f", out tP)) tempF = tP.GetDouble();
-                    else if (item.TryGetProperty("temperature", out tP)) tempF = tP.GetDouble();
-                    else if (item.TryGetProperty("temp", out tP)) tempF = tP.GetDouble();
-                    else if (item.TryGetProperty("temperature_c", out var cP)) tempF = Math.Round(cP.GetDouble() * 9 / 5 + 32, 1);
+                    if (tempF == 0 && item.TryGetProperty("temperature", out tP))
+                    {
+                        double raw = tP.GetDouble();
+                        tempF = raw < 70 ? (raw * 9.0 / 5.0) + 32.0 : raw;
+                    }
 
                     if (lat != 0 && lng != 0 && tempF > 0)
                     {
@@ -286,51 +383,15 @@ public class FortyGuardClient : IFortyGuardClient
                             Latitude = Math.Round(lat, 4),
                             Longitude = Math.Round(lng, 4),
                             TemperatureF = Math.Round(tempF, 1),
-                            TemperatureC = Math.Round((tempF - 32) * 5 / 9, 1)
+                            TemperatureC = Math.Round((tempF - 32.0) * 5.0 / 9.0, 1)
                         });
-                    }
-                }
-            }
-            // Case 2: GeoJSON FeatureCollection ("features")
-            else if (element.TryGetProperty("features", out var featProp) && featProp.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var feature in featProp.EnumerateArray())
-                {
-                    if (feature.TryGetProperty("geometry", out var geom) &&
-                        geom.TryGetProperty("coordinates", out var coords) &&
-                        coords.ValueKind == JsonValueKind.Array)
-                    {
-                        var coordList = coords.EnumerateArray().ToList();
-                        if (coordList.Count >= 2)
-                        {
-                            double lng = coordList[0].GetDouble();
-                            double lat = coordList[1].GetDouble();
-                            double tempF = 104.0;
-
-                            if (feature.TryGetProperty("properties", out var props))
-                            {
-                                if (props.TryGetProperty("temperature_f", out var tP)) tempF = tP.GetDouble();
-                                else if (props.TryGetProperty("temp_f", out tP)) tempF = tP.GetDouble();
-                                else if (props.TryGetProperty("temperature", out tP)) tempF = tP.GetDouble();
-                                else if (props.TryGetProperty("temp", out tP)) tempF = tP.GetDouble();
-                                else if (props.TryGetProperty("value", out tP)) tempF = tP.GetDouble();
-                            }
-
-                            points.Add(new HeatmapPointDto
-                            {
-                                Latitude = Math.Round(lat, 4),
-                                Longitude = Math.Round(lng, 4),
-                                TemperatureF = Math.Round(tempF, 1),
-                                TemperatureC = Math.Round((tempF - 32) * 5 / 9, 1)
-                            });
-                        }
                     }
                 }
             }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error parsing heat points from element: {Message}", ex.Message);
+            _logger.LogWarning(ex, "Error parsing heat points from GeoJSON element: {Message}", ex.Message);
         }
 
         return points;
@@ -378,7 +439,6 @@ public class FortyGuardClient : IFortyGuardClient
         var points = new List<HeatmapPointDto>();
         var random = new Random(42);
 
-        // 25 calibrated thermal sample points across Phoenix metro
         for (double lat = 33.35; lat <= 33.65; lat += 0.06)
         {
             for (double lng = -112.20; lng <= -112.00; lng += 0.05)
