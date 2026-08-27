@@ -6,7 +6,7 @@ const API_BASE_URL = typeof window !== 'undefined' && window.location.port === '
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 15000,
+  timeout: 60000,
 });
 
 // Master Phoenix Calibrated Database with all CDC PLACES measures
@@ -97,7 +97,10 @@ const SCALES = {
   ASTHMA: 15.0,
   BPHIGH: 42.0,
   DIABETES: 20.0,
-  CHD: 10.0
+  CHD: 10.0,
+  OBESITY: 40.0,
+  MENTALDISTRESS: 20.0,
+  NOACTIVITY: 35.0
 };
 
 export const computeDynamicFallbackDataset = (indicator = 'ALL') => {

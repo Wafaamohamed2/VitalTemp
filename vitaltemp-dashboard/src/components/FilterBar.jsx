@@ -16,11 +16,14 @@ export default function FilterBar({
   const levels = ['All', 'Critical', 'High', 'Moderate', 'Low'];
 
   const indicators = [
-    { key: 'ALL', label: 'All Measures (Composite)' },
-    { key: 'ASTHMA', label: 'Asthma Prevalence (CDC)' },
-    { key: 'BPHIGH', label: 'High Blood Pressure (CDC)' },
-    { key: 'CHD', label: 'Coronary Heart Disease (CDC)' },
-    { key: 'DIABETES', label: 'Diabetes Prevalence (CDC)' },
+    { key: 'ALL', label: 'All Measures (Composite Risk)' },
+    { key: 'ASTHMA', label: 'Asthma (CDC PLACES)' },
+    { key: 'BPHIGH', label: 'High Blood Pressure (CDC PLACES)' },
+    { key: 'DIABETES', label: 'Diabetes Prevalence (CDC PLACES)' },
+    { key: 'CHD', label: 'Coronary Heart Disease (CDC PLACES)' },
+    { key: 'OBESITY', label: 'Obesity Prevalence (CDC PLACES)' },
+    { key: 'MENTALDISTRESS', label: 'Mental Distress (CDC PLACES)' },
+    { key: 'NOACTIVITY', label: 'Physical Inactivity (CDC PLACES)' },
   ];
 
   return (
