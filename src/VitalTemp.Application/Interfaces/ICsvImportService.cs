@@ -13,4 +13,5 @@ public interface ICsvImportService
 {
     Task<CsvImportResult> ImportLocationsCsvAsync(Stream csvStream, CancellationToken cancellationToken = default);
     Task<CsvImportResult> ImportHealthDataCsvAsync(Stream csvStream, CancellationToken cancellationToken = default);
+    Task<CsvImportResult> ImportHamzaHeatHealthRiskCsvAsync(Stream csvStream, CancellationToken cancellationToken = default);
 }
