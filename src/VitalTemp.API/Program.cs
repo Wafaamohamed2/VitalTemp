@@ -28,8 +28,10 @@ builder.Services.AddDbContext<VitalTempDbContext>(options =>
 
 // 4. Register In-Memory Caching & HTTP Clients for FortyGuard and Gemini AI
 builder.Services.AddMemoryCache();
-builder.Services.AddHttpClient<IFortyGuardClient, FortyGuardClient>();
-builder.Services.AddHttpClient<IGeminiAiService, GeminiAiService>();
+builder.Services.AddHttpClient<IFortyGuardClient, FortyGuardClient>(client =>
+{
+    client.Timeout = TimeSpan.FromMinutes(5); 
+}); builder.Services.AddHttpClient<IGeminiAiService, GeminiAiService>();
 
 // 5. Register Application & Infrastructure Services
 builder.Services.AddScoped<INeighborhoodService, NeighborhoodService>();
