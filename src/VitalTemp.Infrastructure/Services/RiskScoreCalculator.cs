@@ -99,7 +99,9 @@ public class RiskScoreCalculator : IRiskScoreCalculator
                 : 104.0;
 
             double healthFactor = CalculateNormalizedHealthFactor(loc.HealthDataRecords, indicator);
-            string indName = isComposite ? "Composite Index" : indicator.ToUpperInvariant();
+            // "ALL" matches the composite record seeded by the Hamza CSV import so the
+            // composite row is updated in place rather than duplicated.
+            string indName = isComposite ? "ALL" : indicator.ToUpperInvariant();
 
             return (Loc: loc, AvgTemp: avgTemp, HealthFactor: healthFactor, IndicatorName: indName);
         }).ToList();
@@ -130,8 +132,10 @@ public class RiskScoreCalculator : IRiskScoreCalculator
 
             string notes = $"Thermal Anomaly: {(thermalAnomaly >= 0 ? "+" : "")}{thermalAnomaly}°F from Phoenix mean. {hotspotType}.";
 
-            var analysis = loc.AnalysisResults.FirstOrDefault(a => a.HealthIndicator == indName)
-                           ?? loc.AnalysisResults.FirstOrDefault();
+            // Upsert by (LocationId, HealthIndicator) identity: update the record for THIS
+            // indicator if it exists, otherwise create a new one. Never fall back to a
+            // different-indicator row (that previously caused overwrites and duplicates).
+            var analysis = loc.AnalysisResults.FirstOrDefault(a => a.HealthIndicator == indName);
 
             if (analysis == null)
             {
@@ -149,7 +153,6 @@ public class RiskScoreCalculator : IRiskScoreCalculator
             else
             {
                 analysis.TempAvgF = Math.Round(avgTemp, 1);
-                analysis.HealthIndicator = indName;
                 analysis.Correlation = citywideCorr.PearsonR;
                 analysis.PValue = citywideCorr.PValue;
                 analysis.Notes = notes;

@@ -96,6 +96,9 @@ public class VitalTempDbContext : DbContext
                   .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasIndex(e => e.LocationId);
+
+            // Enforce (LocationId, HealthIndicator) as the unique identity so the database
+            entity.HasIndex(e => new { e.LocationId, e.HealthIndicator }).IsUnique();
         });
     }
 }

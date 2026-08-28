@@ -53,7 +53,7 @@ public class NeighborhoodService : INeighborhoodService
                 displayHealthValue = Math.Round(healthFactor * 100.0, 1); // e.g. 74.5%
 
                 // Use Hamza's precomputed composite risk score if available
-                var analysis = loc.AnalysisResults.FirstOrDefault();
+                var analysis = loc.AnalysisResults.FirstOrDefault(a => a.HealthIndicator == "ALL");
                 if (analysis?.CompositeRiskScore.HasValue == true)
                 {
                     riskScore = Math.Round(analysis.CompositeRiskScore.Value, 2);
