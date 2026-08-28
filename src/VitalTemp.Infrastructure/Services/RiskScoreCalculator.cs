@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using VitalTemp.Application;
 using VitalTemp.Application.Interfaces;
 using VitalTemp.Domain.Entities;
 using VitalTemp.Infrastructure.Data;
@@ -171,15 +172,9 @@ public class RiskScoreCalculator : IRiskScoreCalculator
             var match = list.FirstOrDefault(h => h.Indicator.Equals(indicator, StringComparison.OrdinalIgnoreCase));
             if (match == null) return 0.5;
 
-            double maxScale = indicator.ToUpperInvariant() switch
-            {
-                "BPHIGH" => 42.0,
-                "DIABETES" => 20.0,
-                "CHD" => 10.0,
-                _ => 15.0
-            };
+                double maxScale = HealthIndicatorScales.GetScale(indicator);
 
-            return Math.Clamp(match.Value / maxScale, 0.0, 1.0);
+                return Math.Clamp(match.Value / maxScale, 0.0, 1.0);
         }
         else
         {
@@ -188,13 +183,7 @@ public class RiskScoreCalculator : IRiskScoreCalculator
 
             foreach (var rec in list)
             {
-                double scale = rec.Indicator.ToUpperInvariant() switch
-                {
-                    "BPHIGH" => 42.0,
-                    "DIABETES" => 20.0,
-                    "CHD" => 10.0,
-                    _ => 15.0
-                };
+                double scale = HealthIndicatorScales.GetScale(rec.Indicator);
 
                 sumNormalized += Math.Clamp(rec.Value / scale, 0.0, 1.0);
                 count++;

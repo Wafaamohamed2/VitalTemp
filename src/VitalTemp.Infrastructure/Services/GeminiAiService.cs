@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using VitalTemp.Application;
 using VitalTemp.Application.DTOs;
 using VitalTemp.Application.Interfaces;
 using VitalTemp.Infrastructure.Data;
@@ -70,7 +71,7 @@ public class GeminiAiService : IGeminiAiService
         else
         {
             // Specific indicator -> Dynamic calculation aligned with NeighborhoodService
-            double healthFactor = health?.NormalizedValue ?? Math.Clamp((health?.Value ?? 10.0) / 15.0, 0.0, 1.0);
+            double healthFactor = health?.NormalizedValue ?? HealthIndicatorScales.Normalize(health?.Value ?? 10.0, indicator);
             riskScore = tempNormForScore * 0.60 + healthFactor * 0.40;
         }
         riskScore = Math.Round(riskScore, 2);

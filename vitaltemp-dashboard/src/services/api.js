@@ -93,6 +93,9 @@ const RAW_TRACTS = [
   }
 ];
 
+// MIRROR of VitalTemp.Application.HealthIndicatorScales (backend) — used ONLY by the
+// offline fallback below. In normal operation the backend is the single source of truth
+// and returns riskScore/riskLevel directly; this table must stay in sync with the backend.
 const SCALES = {
   ASTHMA: 15.0,
   BPHIGH: 42.0,
@@ -100,7 +103,10 @@ const SCALES = {
   CHD: 10.0,
   OBESITY: 40.0,
   MENTALDISTRESS: 20.0,
-  NOACTIVITY: 35.0
+  NOACTIVITY: 35.0,
+  DEPRESSION: 20.0,
+  FAIRHEALTH: 40.0,
+  STROKE: 10.0
 };
 
 export const computeDynamicFallbackDataset = (indicator = 'ALL') => {
