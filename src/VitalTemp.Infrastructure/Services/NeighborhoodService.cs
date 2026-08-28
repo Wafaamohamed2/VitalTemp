@@ -93,7 +93,7 @@ public class NeighborhoodService : INeighborhoodService
             };
         }).ToList();
 
-        double meanCityTemp = tractItems.Average(t => t.AvgTemp);
+        double meanCityTemp = locations.Average(l => CityTemperatureBaseline.ResolveLocationAvgTemp(l));
         double meanCityHealthFactor = tractItems.Average(t => t.HealthFactor);
 
         // Step 2: Compute citywide spatial correlation using normalized health factors

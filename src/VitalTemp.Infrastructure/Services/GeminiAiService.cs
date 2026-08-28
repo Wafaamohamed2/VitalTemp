@@ -46,8 +46,9 @@ public class GeminiAiService : IGeminiAiService
         }
 
         var tempReading = location.TemperatureReadings.FirstOrDefault();
-        double avgTemp = tempReading != null ? tempReading.TempF : (location.TemperatureReadings.Any() ? location.TemperatureReadings.Average(r => r.TempF) : 108.0);
-        double thermalAnomaly = Math.Round(avgTemp - 110.4, 1);
+        double avgTemp = CityTemperatureBaseline.ResolveLocationAvgTemp(location);
+        double cityBaseline = await CityTemperatureBaseline.ComputeAsync(_context, cancellationToken);
+        double thermalAnomaly = Math.Round(avgTemp - cityBaseline, 1);
 
         bool isComposite = indicator.Equals("ALL", StringComparison.OrdinalIgnoreCase);
         var health = isComposite
