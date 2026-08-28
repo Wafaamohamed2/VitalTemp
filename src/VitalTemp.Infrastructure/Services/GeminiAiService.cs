@@ -84,7 +84,7 @@ public class GeminiAiService : IGeminiAiService
                         ?? Environment.GetEnvironmentVariable("GEMINI_API_KEY")
                         ?? string.Empty;
 
-        if (!string.IsNullOrWhiteSpace(apiKey) && !apiKey.StartsWith("mock", StringComparison.OrdinalIgnoreCase))
+        if (ApiKeyHelper.IsConfigured(apiKey))
         {
             try
             {

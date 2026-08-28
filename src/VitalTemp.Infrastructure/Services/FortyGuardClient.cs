@@ -57,7 +57,7 @@ public class FortyGuardClient : IFortyGuardClient
 
         FortyGuardHeatmapResponse response;
 
-        if (string.IsNullOrWhiteSpace(apiKey) || apiKey.StartsWith("mock", StringComparison.OrdinalIgnoreCase))
+        if (!ApiKeyHelper.IsConfigured(apiKey))
         {
             _logger.LogWarning("No real FortyGuard API key configured in appsettings/environment. Utilizing calibrated Phoenix thermal matrix fallback.");
             response = GenerateRealisticPhoenixHeatmap(request);
