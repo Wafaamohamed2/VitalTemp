@@ -180,6 +180,7 @@ export default function App() {
         <div style={{ flex: '1', minWidth: '320px' }}>
           <RiskScoreCard
             selectedTract={selectedTract}
+            selectedIndicator={selectedIndicator}
             onClose={() => setSelectedTract(null)}
           />
         </div>

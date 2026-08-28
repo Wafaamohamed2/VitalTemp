@@ -112,11 +112,10 @@ export default function MapView({ neighborhoods, selectedTract, onSelectTract, m
       >
         <MapController center={defaultCenter} zoom={defaultZoom} />
 
-        {/* High contrast CartoDB Dark Matter tile layer */}
+        {/* High performance OpenStreetMap Tile Layer without watermarks */}
         <TileLayer
-          attribution='&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-          subdomains="abcd"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           maxZoom={19}
         />
 

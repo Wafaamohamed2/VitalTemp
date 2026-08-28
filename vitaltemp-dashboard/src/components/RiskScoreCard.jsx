@@ -2,9 +2,14 @@ import React, { useState } from 'react';
 import { Thermometer, Activity, TrendingUp, Sparkles, X, MapPin, Bot, CheckCircle2, ShieldAlert, Compass } from 'lucide-react';
 import { generateGeminiRecommendations } from '../services/api';
 
-export default function RiskScoreCard({ selectedTract, onClose }) {
+export default function RiskScoreCard({ selectedTract, selectedIndicator = 'ALL', onClose }) {
   const [aiReport, setAiReport] = useState(null);
   const [generatingAi, setGeneratingAi] = useState(false);
+
+  // Reset AI report when tract or indicator changes so the user can generate fresh tailored recommendations
+  React.useEffect(() => {
+    setAiReport(null);
+  }, [selectedTract?.locationId, selectedIndicator]);
 
   if (!selectedTract) {
     return (
@@ -44,7 +49,7 @@ export default function RiskScoreCard({ selectedTract, onClose }) {
   const handleGenerateAi = async () => {
     setGeneratingAi(true);
     try {
-      const res = await generateGeminiRecommendations(selectedTract.locationId);
+      const res = await generateGeminiRecommendations(selectedTract.locationId, selectedIndicator);
       setAiReport(res);
     } catch (err) {
       console.error('Failed to generate Gemini AI recommendations:', err);
@@ -175,35 +180,38 @@ export default function RiskScoreCard({ selectedTract, onClose }) {
         </p>
       </div>
 
-      {/* Google Gemini AI Strategy Section */}
+      {/* AI Generate Recommendations Section */}
       <div style={{ background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.08), rgba(129, 140, 248, 0.08))', border: '1px solid rgba(56, 189, 248, 0.25)', padding: '16px', borderRadius: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent-cyan)', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>
-            <Bot size={16} /> Google Gemini AI Strategic Intelligence
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent-cyan)', fontSize: '0.82rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            <Sparkles size={16} color="var(--accent-cyan)" /> Generate Recommendations
           </div>
-          {!aiReport && (
-            <button
-              onClick={handleGenerateAi}
-              disabled={generatingAi}
-              style={{
-                padding: '4px 10px',
-                borderRadius: '6px',
-                background: 'linear-gradient(135deg, #0284c7, #38bdf8)',
-                border: 'none',
-                color: '#ffffff',
-                fontSize: '0.72rem',
-                fontWeight: 700,
-                cursor: generatingAi ? 'not-allowed' : 'pointer'
-              }}
-            >
-              {generatingAi ? 'Analyzing...' : 'Generate Plan'}
-            </button>
-          )}
+          <button
+            onClick={handleGenerateAi}
+            disabled={generatingAi}
+            style={{
+              padding: '5px 12px',
+              borderRadius: '8px',
+              background: 'linear-gradient(135deg, #0284c7, #38bdf8)',
+              border: 'none',
+              color: '#ffffff',
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              cursor: generatingAi ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              boxShadow: '0 2px 8px rgba(56, 189, 248, 0.25)',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            {generatingAi ? 'Analyzing...' : aiReport ? 'Regenerate Plan' : 'Generate Recommendations'}
+          </button>
         </div>
 
         {aiReport ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#f9fafb' }}>
+            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#f9fafb', lineHeight: 1.45, background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
               {aiReport.executiveSummary}
             </div>
             
@@ -228,7 +236,7 @@ export default function RiskScoreCard({ selectedTract, onClose }) {
           </div>
         ) : (
           <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-            Click "Generate Plan" to invoke Google Gemini AI to formulate tailored urban heat mitigation and public health directives for {selectedTract.name}.
+            Click <b>"Generate Recommendations"</b> to analyze microclimate thermal loads and generate customized public health mitigation directives for <b>{selectedTract.name}</b> ({selectedIndicator === 'ALL' ? 'Composite Risk' : selectedIndicator}).
           </p>
         )}
       </div>

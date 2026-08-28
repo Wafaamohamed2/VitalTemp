@@ -4,5 +4,5 @@ namespace VitalTemp.Application.Interfaces;
 
 public interface IGeminiAiService
 {
-    Task<GeminiRecommendationDto> GenerateNeighborhoodRecommendationsAsync(int locationId, CancellationToken cancellationToken = default);
+    Task<GeminiRecommendationDto> GenerateNeighborhoodRecommendationsAsync(int locationId, string indicator = "ALL", CancellationToken cancellationToken = default);
 }

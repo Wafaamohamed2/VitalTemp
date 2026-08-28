@@ -53,7 +53,7 @@ export default function Header({ isLive, onRefresh, onSyncFortyGuard, onOpenCsvM
             backgroundColor: isLive ? '#10b981' : '#eab308',
             boxShadow: isLive ? '0 0 8px #10b981' : '0 0 8px #eab308'
           }} />
-          {isLive ? 'Live .NET 10 API' : 'Cached Local Demo'}
+          {isLive ? 'Live' : 'Cached'}
         </div>
 
         {/* Sync FortyGuard Heat Button */}

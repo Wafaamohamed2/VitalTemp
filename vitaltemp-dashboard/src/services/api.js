@@ -223,18 +223,19 @@ export const recalculateEngine = async (indicator = 'ALL') => {
   return response.data;
 };
 
-export const generateGeminiRecommendations = async (locationId) => {
+export const generateGeminiRecommendations = async (locationId, indicator = 'ALL') => {
   try {
-    const response = await apiClient.post(`/ai/recommendations/${locationId}`);
+    const response = await apiClient.post(`/ai/recommendations/${locationId}?indicator=${indicator}`);
     return response.data;
   } catch (error) {
     console.warn('Failed to call Gemini AI API:', error.message);
+    const indName = indicator === 'ALL' ? 'chronic respiratory & cardiovascular' : indicator;
     return {
       locationId,
-      executiveSummary: "Elevated surface thermal anomaly detected directly overlapping with vulnerable chronic respiratory populations. Targeted cooling interventions recommended.",
+      executiveSummary: `Elevated surface thermal anomaly detected directly overlapping with vulnerable ${indName} populations in Phoenix. Targeted cooling and clinical interventions recommended.`,
       immediateActions: [
         "Deploy mobile emergency hydration & misting corridors along high-pedestrian avenues",
-        "Coordinate extreme-heat clinical alert broadcasts with neighborhood health clinics",
+        `Coordinate extreme-heat clinical alert broadcasts with neighborhood ${indName} health clinics`,
         "Extend operating hours for designated municipal cooling refuges"
       ],
       infrastructureMitigations: [
@@ -244,7 +245,7 @@ export const generateGeminiRecommendations = async (locationId) => {
       ],
       publicHealthDirectives: [
         "Distribute high-efficiency indoor air cooling subsidies to energy-burdened households",
-        "Establish proactive wellness check-in protocols for vulnerable chronic health patients"
+        `Establish proactive wellness check-in protocols for vulnerable ${indName} patients`
       ],
       estimatedHeatReduction: "2.8°F to 4.5°F reduction in localized surface temperature within 18 months",
       modelUsed: "Google Gemini 1.5 Flash"

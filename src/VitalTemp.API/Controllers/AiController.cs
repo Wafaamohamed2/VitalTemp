@@ -24,12 +24,12 @@ public class AiController : ControllerBase
     [HttpPost("recommendations/{locationId:int}")]
     [ProducesResponseType(typeof(GeminiRecommendationDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GenerateRecommendations(int locationId, CancellationToken ct = default)
+    public async Task<IActionResult> GenerateRecommendations(int locationId, [FromQuery] string indicator = "ALL", CancellationToken ct = default)
     {
         try
         {
-            _logger.LogInformation("Triggering Gemini AI recommendation generation for Location ID {LocationId}", locationId);
-            var result = await _geminiAiService.GenerateNeighborhoodRecommendationsAsync(locationId, ct);
+            _logger.LogInformation("Triggering Gemini AI recommendation generation for Location ID {LocationId} (Indicator: {Indicator})", locationId, indicator);
+            var result = await _geminiAiService.GenerateNeighborhoodRecommendationsAsync(locationId, indicator, ct);
             return Ok(result);
         }
         catch (KeyNotFoundException)
