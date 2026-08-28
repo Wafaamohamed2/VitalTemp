@@ -6,7 +6,7 @@ import MapView from './components/MapView';
 import RiskScoreCard from './components/RiskScoreCard';
 import Legend from './components/Legend';
 import CsvUploadModal from './components/CsvUploadModal';
-import { getNeighborhoodRiskScores, getDashboardSummary, syncFortyGuardHeat } from './services/api';
+import { getNeighborhoodRiskScores, getDashboardSummary, getSystemStatus, syncFortyGuardHeat } from './services/api';
 import { Loader2, SearchX } from 'lucide-react';
 
 export default function App() {
@@ -31,14 +31,16 @@ export default function App() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [scoresRes, summaryRes] = await Promise.all([
+      const [scoresRes, summaryRes, statusRes] = await Promise.all([
         getNeighborhoodRiskScores(selectedIndicator),
-        getDashboardSummary(selectedIndicator)
+        getDashboardSummary(selectedIndicator),
+        getSystemStatus()
       ]);
 
       const data = scoresRes.data || [];
       setNeighborhoods(data);
-      setIsLive(scoresRes.isLive);
+      // "Live" means external (FortyGuard) data is configured; otherwise we are on the calibrated fallback.
+      setIsLive(statusRes.dataSource === 'live');
       setSummary(summaryRes);
 
       // Keep selected tract synchronized with fresh calculations

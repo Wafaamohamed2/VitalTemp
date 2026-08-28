@@ -227,6 +227,15 @@ export const getDashboardSummary = async (indicator = 'ALL') => {
   }
 };
 
+export const getSystemStatus = async () => {
+  try {
+    const response = await apiClient.get('/analytics/status');
+    return response.data;
+  } catch {
+    return { fortyGuardConfigured: false, geminiConfigured: false, dataSource: 'fallback' };
+  }
+};
+
 export const syncFortyGuardHeat = async () => {
   const response = await apiClient.post('/analytics/sync-temperatures');
   return response.data;

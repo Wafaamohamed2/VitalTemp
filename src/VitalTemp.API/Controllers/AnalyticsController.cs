@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using VitalTemp.Application.DTOs;
 using VitalTemp.Application.Interfaces;
+using VitalTemp.Infrastructure.Services;
 
 namespace VitalTemp.API.Controllers;
 
@@ -10,16 +12,46 @@ public class AnalyticsController : ControllerBase
 {
     private readonly IFortyGuardClient _fortyGuardClient;
     private readonly IRiskScoreCalculator _riskScoreCalculator;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<AnalyticsController> _logger;
 
     public AnalyticsController(
         IFortyGuardClient fortyGuardClient,
         IRiskScoreCalculator riskScoreCalculator,
+        IConfiguration configuration,
         ILogger<AnalyticsController> logger)
     {
         _fortyGuardClient = fortyGuardClient;
         _riskScoreCalculator = riskScoreCalculator;
+        _configuration = configuration;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Reports whether external data sources are actually configured (i.e. live) versus
+    /// running on the calibrated fallback. Drives the dashboard Live/Fallback badge honestly.
+    /// </summary>
+    [HttpGet("status")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public IActionResult GetStatus()
+    {
+        string fgKey = _configuration["FortyGuard:ApiKey"]
+                       ?? Environment.GetEnvironmentVariable("FORTYGUARD_API_KEY")
+                       ?? _configuration["API_KEY"]
+                       ?? string.Empty;
+        string geminiKey = _configuration["Gemini:ApiKey"]
+                           ?? Environment.GetEnvironmentVariable("GEMINI_API_KEY")
+                           ?? string.Empty;
+
+        bool fortyGuardConfigured = ApiKeyHelper.IsConfigured(fgKey);
+        bool geminiConfigured = ApiKeyHelper.IsConfigured(geminiKey);
+
+        return Ok(new
+        {
+            fortyGuardConfigured,
+            geminiConfigured,
+            dataSource = fortyGuardConfigured ? "live" : "fallback"
+        });
     }
 
     /// <summary>

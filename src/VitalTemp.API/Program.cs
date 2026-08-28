@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using Microsoft.EntityFrameworkCore;
 using VitalTemp.Application.Interfaces;
 using VitalTemp.Infrastructure.Data;
@@ -8,19 +10,37 @@ var builder = WebApplication.CreateBuilder(args);
 // 1. Add Controllers
 builder.Services.AddControllers();
 
-// 2. Configure CORS for Frontend React Vite (localhost:5173, localhost:3000, etc.)
+// 2. Configure CORS for Frontend React Vite.
+// Origins are configured via "Cors:AllowedOrigins" (comma-separated or JSON array). When no
+// origin is configured we fall back to the local Vite dev server only — never AllowAnyOrigin.
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+        if (allowedOrigins != null && allowedOrigins.Length > 0)
+        {
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        }
+        else
+        {
+            policy.WithOrigins("http://localhost:5173", "https://localhost:5173")
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        }
     });
 });
 
-// 3. Configure EF Core with SQLite
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=vitaltemp.db";
+// 3. Configure EF Core with SQLite.
+// Connection string is taken from "ConnectionStrings:DefaultConnection" (env override:
+// ConnectionStrings__DefaultConnection). When unset, the DB lives next to the assembly so the
+// path is predictable in any deployment/working directory.
+var configuredConnection = builder.Configuration.GetConnectionString("DefaultConnection");
+var connectionString = string.IsNullOrWhiteSpace(configuredConnection)
+    ? $"Data Source={Path.Combine(AppContext.BaseDirectory, "vitaltemp.db")}"
+    : configuredConnection;
 builder.Services.AddDbContext<VitalTempDbContext>(options =>
 {
     options.UseSqlite(connectionString);

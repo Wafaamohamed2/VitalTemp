@@ -50,6 +50,7 @@ _ReSharper*/
 .env.production.local
 appsettings.Secrets.json
 appsettings.Local.json
+appsettings.Production.json
 *.key
 *.pem
 *.pfx
@@ -87,6 +88,7 @@ Temp/
 temp/
 scratch/
 .tmp/
+publish/
 Thumbs.db
 ehthumbs.db
 Desktop.ini
