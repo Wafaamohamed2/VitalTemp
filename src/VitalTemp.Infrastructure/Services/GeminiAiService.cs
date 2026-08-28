@@ -57,7 +57,7 @@ public class GeminiAiService : IGeminiAiService
         double healthValue = health?.Value ?? 10.0;
         string indicatorDisplay = isComposite ? "Composite Chronic Disease Index" : indicator.ToUpperInvariant();
 
-        var analysis = location.AnalysisResults.FirstOrDefault();
+        var analysis = location.AnalysisResults.FirstOrDefault(a => a.HealthIndicator == "ALL");
         double correlation = analysis?.Correlation ?? -0.27;
         
         double tempNormForScore = tempReading?.TempNormalized ?? Math.Clamp((avgTemp - 98.0) / (116.0 - 98.0), 0.0, 1.0);
@@ -232,8 +232,10 @@ Do NOT include markdown backticks around JSON.";
         string hotspotCategory,
         double riskScore)
     {
-        bool isCritical = riskScore >= 0.55 || avgTemp >= 111.0;
-        bool isHigh = riskScore >= 0.48 || avgTemp >= 109.0;
+        // Classify by the shared thresholds (risk score only) so the AI report matches the map.
+        string level = RiskLevelClassifier.Classify(riskScore);
+        bool isCritical = level == "Critical";
+        bool isHigh = level == "High";
 
         string summary = isCritical
             ? $"{name} represents a high-priority microclimate cluster with elevated surface thermal absorption ({avgTemp:F1}°F, {(thermalAnomaly >= 0 ? "+" : "")}{thermalAnomaly:F1}°F vs baseline) intersecting with elevated {indicatorName} burden ({healthRate:F1}%). Immediate emergency deployment and high-albedo cool pavement are strongly recommended."

@@ -109,6 +109,14 @@ const SCALES = {
   STROKE: 10.0
 };
 
+// MIRROR of VitalTemp.Application.RiskLevelClassifier (backend) — used ONLY by the
+// offline fallback below. Classification is by risk score only, matching the map.
+const RISK_THRESHOLDS = {
+  Critical: 0.80,
+  High: 0.65,
+  Moderate: 0.45
+};
+
 export const computeDynamicFallbackDataset = (indicator = 'ALL') => {
   const isComposite = indicator === 'ALL';
   const indKey = isComposite ? 'ALL' : indicator.toUpperCase();
@@ -136,9 +144,9 @@ export const computeDynamicFallbackDataset = (indicator = 'ALL') => {
     const score = Math.round(((tempFactor * 0.60) + (healthFactor * 0.40)) * 100) / 100;
 
     let level = 'Low';
-    if (score >= 0.80) level = 'Critical';
-    else if (score >= 0.65) level = 'High';
-    else if (score >= 0.45) level = 'Moderate';
+    if (score >= RISK_THRESHOLDS.Critical) level = 'Critical';
+    else if (score >= RISK_THRESHOLDS.High) level = 'High';
+    else if (score >= RISK_THRESHOLDS.Moderate) level = 'Moderate';
 
     const thermalAnomaly = Math.round((t.tempAvgF - meanTemp) * 10) / 10;
     const hotspotCategory = (thermalAnomaly >= 0 && healthFactor >= 0.5) 

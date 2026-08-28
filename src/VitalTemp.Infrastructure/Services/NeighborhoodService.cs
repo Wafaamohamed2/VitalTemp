@@ -117,13 +117,7 @@ public class NeighborhoodService : INeighborhoodService
                 (false, true) => "Moderate Heat / Elevated Health Burden"
             };
 
-            string riskLevel = riskScore switch
-            {
-                >= 0.80 => "Critical",
-                >= 0.65 => "High",
-                >= 0.45 => "Moderate",
-                _ => "Low"
-            };
+            string riskLevel = RiskLevelClassifier.Classify(riskScore);
 
             string notes = $"Thermal Anomaly: {(thermalAnomaly >= 0 ? "+" : "")}{thermalAnomaly}°F vs city baseline. {hotspotCategory}.";
 
