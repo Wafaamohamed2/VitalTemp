@@ -68,3 +68,8 @@ Submit Response:
       "activity_id": "1d66d7d6-27cf-4f0d-87d1-48df3e7171d4"
     }
 }
+```
+
+## What Doesn't Work Yet
+  - "Critical" risk tier is empty for the current 100-tract sample. This is a genuine finding, not a bug: the citywide heat-health correlation in this sample is slightly negative (r ≈ -0.27), so no single tract combines both extreme heat and extreme health burden. See the dashboard's correlation panel.
+  - Real-time push updates (SignalR) are not implemented; the dashboard requires a manual refresh/sync to pick up new data.
