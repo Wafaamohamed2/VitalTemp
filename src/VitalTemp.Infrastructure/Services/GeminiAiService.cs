@@ -81,9 +81,10 @@ public class GeminiAiService : IGeminiAiService
             ? analysis.Notes 
             : (thermalAnomaly >= 0 ? "High Heat Exposure Zone" : "Moderate Environmental Buffer");
 
-        string apiKey = _configuration["Gemini:ApiKey"]
-                        ?? Environment.GetEnvironmentVariable("GEMINI_API_KEY")
-                        ?? string.Empty;
+        string apiKey = _configuration["Gemini:ApiKey"];
+        if (string.IsNullOrWhiteSpace(apiKey))
+            apiKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY");
+        apiKey ??= string.Empty;
 
         if (ApiKeyHelper.IsConfigured(apiKey))
         {

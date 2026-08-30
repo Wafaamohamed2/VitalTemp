@@ -47,10 +47,12 @@ public class FortyGuardClient : IFortyGuardClient
 
         _logger.LogInformation("Cache Miss. Initiating true Submit -> Poll pipeline with FortyGuard API...");
 
-        string apiKey = _configuration["FortyGuard:ApiKey"] 
-                        ?? Environment.GetEnvironmentVariable("FORTYGUARD_API_KEY") 
-                        ?? _configuration["API_KEY"] 
-                        ?? string.Empty;
+        string apiKey = _configuration["FortyGuard:ApiKey"];
+        if (string.IsNullOrWhiteSpace(apiKey))
+            apiKey = Environment.GetEnvironmentVariable("FORTYGUARD_API_KEY");
+        if (string.IsNullOrWhiteSpace(apiKey))
+            apiKey = _configuration["API_KEY"];
+        apiKey ??= string.Empty;
         
         string baseUrl = _configuration["FortyGuard:BaseUrl"] ?? "https://api.fortyguard.com";
         baseUrl = baseUrl.TrimEnd('/');
