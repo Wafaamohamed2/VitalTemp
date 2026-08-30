@@ -73,3 +73,4 @@ Submit Response:
 ## What Doesn't Work Yet
   - "Critical" risk tier is empty for the current 100-tract sample. This is a genuine finding, not a bug: the citywide heat-health correlation in this sample is slightly negative (r ≈ -0.27), so no single tract combines both extreme heat and extreme health burden. See the dashboard's correlation panel.
   - Real-time push updates (SignalR) are not implemented; the dashboard requires a manual refresh/sync to pick up new data.
+  - Heat Intelligence PDF reports (FortyGuard's /v1/heat_intelligence endpoint) are not integrated into the dashboard — deferred as a stretch feature.
